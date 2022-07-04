@@ -1,6 +1,6 @@
 # apdevmp-shopaholic
 
-The program requires the installation of the following modules
+``The program requires the installation of the following modules
     -	express
     -	express-session
     -	cookie-parser
@@ -12,4 +12,5 @@ The program requires the installation of the following modules
     -	passport-local
     -	crypto-js
     -	hbs
+  ``
     
