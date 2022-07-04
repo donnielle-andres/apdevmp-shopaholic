@@ -28,5 +28,9 @@ Create Listing leads you to a form where you can post your own listing by giving
 
 The Search Bar helps buyers find a certain item that might be posted on the site. 
 
+## How to Start
+-
+
+
 ## References
 * 
