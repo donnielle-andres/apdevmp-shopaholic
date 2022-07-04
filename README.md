@@ -18,7 +18,7 @@ Machine Project Phase 2 for CCAPDEV2021T2
 ## Description
 Shopaholic is a buying and selling site which aims to help sellers get exposure for their listings and to help buyers find the items that they are looking for.
 
-The Home page displays different products that are currently listed in the site. The navigation bar has four links, leading to Home, Shop, Profile, Create Listing, and a Search Bar.
+The Home page displays different products that are currently listed in the site. The navigation bar has four links, leading to Home, Shop, Profile, Create Listing, Log Out, and a Search Bar.
 
 The Shop leads the buyer to find more listings found on the site, with bigger space for these listings than in the home page. This page also enables the buyer to filter the listings to their preference.
 
