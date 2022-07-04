@@ -4,26 +4,13 @@ const CryptoJS = require('crypto-js');
 //const {image} = req.files;
 const passport = require('passport');
 
-const multer = require('multer');
-const storage = multer.diskStorage({
-    destination: function(request, file, callback){
-        callback(null, 'images/products');
-    },
-
-    filename:function(request, file, callback){
-        callback(null, file.originalname);
-    }
-});
-
-const upload = multer({
-    storage:storage,
-});
 const router  = express.Router(); 
 
 //MODELS
 const Product = require('../model/Product');
 const Review = require('../model/Review');
 const User = require('../model/User');
+const { secret } = require('../config');
 
 
 const controller = {
@@ -42,7 +29,7 @@ const controller = {
             username: req.body.username,
             displayname: req.body.displayname,
             email: req.body.email,
-            password: CryptoJS.AES.encrypt(req.body.password, "Shopaholic").toString(), // Hashes the password
+            password: CryptoJS.AES.encrypt(req.body.password, secret).toString(), // Hashes the password
             phonenum: req.body.phonenum,
             location: req.body.location,
             logged: "false",
@@ -69,7 +56,7 @@ const controller = {
 
 
     // LOGIN
-    login: async (req, res) => {
+    login: async (req, res, next) => {
 
         // gets log in information
         try {
@@ -77,23 +64,29 @@ const controller = {
             const user = await User.findOne({ username: req.body.username });
             !user && res.status(401).json("account username is wrong");
             
-            const origpassword = CryptoJS.AES.decrypt(user.password, "Shopaholic").toString(CryptoJS.enc.Utf8);
+            const origpassword = CryptoJS.AES.decrypt(user.password, secret).toString(CryptoJS.enc.Utf8);
             origpassword !== req.body.password && res.status(401).json("account password is wrong");
 
             User.findByIdAndUpdate(user._id, { "logged": "true" } ) // updates logged status
  
             //res.status(200).json(user);
 
+            req.session.user = user;
+            req.session.save();
+            //res.send("User Logged in" + user);
+            console.log("User Logged in" + user)
 
-            //successRedirect: res.redirect('./views/Account.html')
             res.render('Account',{ 
                 title: "Account Profile",  
                 userinfo: user,
-                //successRedirect: res.redirect('./views/Account.hbs')
+                successRedirect: './views/Account',
+                failureRedirect: '../public/login'
             })
 
-            this.userProfile();
-           
+            
+
+            //this.userProfile(); 
+            
         } catch (error) {
             res.status(500).json(error);
             //failureRedirect: res.redirect('./index.html');
@@ -102,19 +95,29 @@ const controller = {
     }, 
 
 
+
+
     // USER PROFILE
     userProfile: (req, res) => {
-            req.session.user = user;
-            req.session.save();
-            res.send("User Logged in");
-            console.log("User Logged in")
+        let user = req.session.user
+        res.render('Account',{ 
+            title: "Account Profile",  
+            userinfo: user,
+            successRedirect: './views/Account',
+            failureRedirect: '../public/login'
+        }) 
+        //return res.send(user)
+    }, 
 
-    },
 
+ 
+  
     logout: (req, res) => {
         req.session.destroy();
-        res.send("User Logged Out")
-        console.log("User Logged Out")
+        //res.send("User Logged Out")
+        res.redirect('./public/index.html')
+        console.log("User Logged Out") 
+
     },
 
 
@@ -122,30 +125,31 @@ const controller = {
     updateinfo: async (req, res) => {
 
         User.findOne({username: req.body.username}).then((user) => {
-                    user.email = req.body.email;
-                    user.displayname =  req.body.email;
-                    user.password = CryptoJS.AES.encrypt(req.body.password, "Shopaholic").toString();
-                    user.phonenum = req.body.phonenum;
+                    user.location = req.query.location;
+                    user.email = req.query.email;
+
 
                 user.save().then(() => res.json("Account Updated" + user))
                 .catch((error) => 
                 res.status(500).json("post review error" + error));
         })
-    },
+
+    }, 
 
  
-
+    //SEARCH
+    /*
     search: async(req,res) => {
         const products = await Product.find({
             $text: {$search: req.body.searchbox}
-            Product.create(req.body, (error,post) => {
+        Product.create(req.body, (error,post) => {
             res.redirect('/');
             console.log("Product created" + post);
-            })
-        }
-    },
+    });*/
+    
 
     createprod: async(req,res) => {
+        let image = req.files;
         image.mv(path.resolve(__dirname,'public/images',image.name),(error) => {
             Product.create({
                 ...req.body,
@@ -153,14 +157,37 @@ const controller = {
             }, (error,post) => {
                 res.redirect('/')
             });
-        });
+        }); 
     },
+
+
+
+
+
+
+
+    // retrieve all products of the selected user
+    showOwnProducts: async (req, res) => {
+        let user = req.body.username;
+
+        try {
+            const acc_products = await Review.findOne({sellerUN: user.username});
+            res.status(200).json(acc_products); 
+
+        } catch (error) {
+            res.status(500).json(error);
+        }
+        
+        
+    }, 
+
+
 
     
 
     /**
-     * REVIEW
-     * - create
+     * REVIEWp
+     * - post
      * - retrieve
      */
 
@@ -169,11 +196,13 @@ const controller = {
 
             // gets the information of seller 
             // ** still doesnt work for buyer
+        let user = req.session.user;    // current user is posting a review
+                                        // must get id of the shop
 
         // gets review information
         const new_review = new Review({ 
             sellerUN: seller.username,
-            buyerUN: req.body.buyerUN,
+            buyerUN: user.username,
             productName: req.body.productName,
             reviewdesc: req.body.reviewdesc, 
             rate: req.body.rate
@@ -191,26 +220,28 @@ const controller = {
     },
 
 
-
+ 
 
 
     // RETRIEVE POSTED
     viewreviews: async (req, res) => {
         // when the review tab is clicked
         // all reviews of the seller will be shown
+
+        // gets the account username
+
         
-        // gets the account username 
         try {
             const acc_reviews = await Review.findOne({sellerUN: req.body.sellerUN});
             res.status(200).json(acc_reviews); 
 
         } catch (error) {
             res.status(500).json(error);
-        }
+        } 
         
     }
 
-
+ 
 };
 
-module.exports = controller;
+module.exports = controller; 
