@@ -1,7 +1,7 @@
 # apdevmp-shopaholic
 
 The program requires the installation of the following modules
-    -	express 
+    -	express
     -	express-session
     -	cookie-parser
     -	express-fileupload
